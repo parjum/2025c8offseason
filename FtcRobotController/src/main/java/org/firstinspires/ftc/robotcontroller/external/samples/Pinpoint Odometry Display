@@ -1,0 +1,96 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import org.gobilda.pinpoint.hardware.GoBildaPinpointDriver;
+import org.gobilda.pinpoint.localization.Pose2d;
+
+@TeleOp(name = "Pinpoint Odometry Display", group = "Test")
+public class PinpointOdometryDisplay extends LinearOpMode {
+
+    private GoBildaPinpointDriver pinpoint;
+
+    @Override
+    public void runOpMode() {
+
+        // Initialize the Pinpoint Odometry Computer from hardwareMap
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+
+        // Set encoder resolution for your odometry pods
+        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+
+        // Set encoder directions — adjust if readings are inverted
+        pinpoint.setEncoderDirections(
+                GoBildaPinpointDriver.EncoderDirection.REVERSED, // X direction pod
+                GoBildaPinpointDriver.EncoderDirection.FORWARD   // Y direction pod
+        );
+
+        // Set encoder offsets (in tenths of a millimeter) from robot center
+        // Example: 152.6mm = 1526
+        pinpoint.setOffsets(1526, 1464); // Adjust to match your bot layout
+
+        // Optional: Reset pose to (0, 0, 0)
+        pinpoint.resetPoseEstimate();
+
+        telemetry.addLine("Pinpoint Ready - Waiting for Start");
+        telemetry.update();
+
+        waitForStart();
+
+        while (opModeIsActive()) {
+            // Read robot's current pose
+            Pose2d pose = pinpoint.getPose();
+
+            // Display pose in inches and degrees
+            telemetry.addData("X (in)", pose.getX());
+            telemetry.addData("Y (in)", pose.getY());
+            telemetry.addData("Heading (deg)", Math.toDegrees(pose.getHeading()));
+            telemetry.update();
+        }
+    }
+}
+
+    private Pose2d txPinpointRobot = new Pose2d(0, 0, 0);
+
+    public PinpointLocalizer(HardwareMap hardwareMap, double inPerTick, Pose2d initialPose) {
+        // TODO: make sure your config has a Pinpoint device with this name
+        //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
+        driver = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+
+        double mmPerTick = 25.4 * inPerTick;
+        driver.setEncoderResolution(1 / mmPerTick);
+        driver.setOffsets(mmPerTick * PARAMS.parYTicks, mmPerTick * PARAMS.perpXTicks);
+
+        // TODO: reverse encoder directions if needed
+        initialParDirection = GoBildaPinpointDriver.EncoderDirection.FORWARD;
+        initialPerpDirection = GoBildaPinpointDriver.EncoderDirection.FORWARD;
+
+        driver.setEncoderDirections(initialParDirection, initialPerpDirection);
+
+        driver.resetPosAndIMU();
+
+        txWorldPinpoint = initialPose;
+    }
+
+    @Override
+    public void setPose(Pose2d pose) {
+        txWorldPinpoint = pose.times(txPinpointRobot.inverse());
+    }
+
+    @Override
+    public Pose2d getPose() {
+        return txWorldPinpoint.times(txPinpointRobot);
+    }
+
+    @Override
+    public PoseVelocity2d update() {
+        driver.update();
+        if (Objects.requireNonNull(driver.getDeviceStatus()) == GoBildaPinpointDriver.DeviceStatus.READY) {
+            txPinpointRobot = new Pose2d(driver.getPosX() / 25.4, driver.getPosY() / 25.4, driver.getHeading());
+            Vector2d worldVelocity = new Vector2d(driver.getVelX() / 25.4, driver.getVelY() / 25.4);
+            Vector2d robotVelocity = Rotation2d.fromDouble(-driver.getHeading()).times(worldVelocity);
+            return new PoseVelocity2d(robotVelocity, driver.getHeadingVelocity());
+        }
+        return new PoseVelocity2d(new Vector2d(0, 0), 0);
+    }
+}
