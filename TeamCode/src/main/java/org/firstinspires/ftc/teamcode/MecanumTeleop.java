@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 @TeleOp
-public class test extends LinearOpMode {
+public class MecanumTeleop extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         // Declare motors
