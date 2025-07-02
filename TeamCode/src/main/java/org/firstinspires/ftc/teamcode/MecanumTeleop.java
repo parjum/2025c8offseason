@@ -26,10 +26,17 @@ public class MecanumTeleop extends LinearOpMode {
             double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
             double rx = gamepad1.right_stick_x;
 
+            double drivePower;
+            if (gamepad1.right_trigger > 0.75) {
+                drivePower = 0.25;
+            } else {
+                drivePower = 0.8;
+            }
+
             // Denominator is the largest motor power (absolute value) or 1
             // This ensures all the powers maintain the same ratio,
             // but only if at least one is out of the range [-1, 1]
-            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1) * drivePower;
             double flPower = (y + x + rx) / denominator;
             double blPower = (y - x + rx) / denominator;
             double frPower = (y - x - rx) / denominator;
